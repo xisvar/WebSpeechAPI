@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Web Speech API Demo</title>
+  <style>
+    /* General Styling */
+    body {
+      font-family: Cambria, serif;
+      background-color: #f5f5f5;
+      color: #333;
+      margin: 0;
+      padding: 2em;
+    }
+    h1 {
+      margin-top: 0;
+    }
+    section {
+      background-color: #fff;
+      padding: 1.5em;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      margin-bottom: 2em;
+    }
+    .output, .hints {
+      margin: 20px 0;
+      font-size: 1.2em;
+    }
+    .hints span {
+      padding: 0.3em 0.5em;
+      margin: 0.2em;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      display: inline-block;
+      color: #333;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #ccc;
+      margin: 3em 0;
+    }
+    /* Form Styling for Speech Synthesis */
+    form {
+      margin: 2em auto;
+      max-width: 600px;
+    }
+    form label {
+      display: block;
+      margin-top: 1em;
+      font-weight: bold;
+    }
+    form input[type="text"],
+    form input[type="range"],
+    form select {
+      width: 100%;
+      padding: 0.5em;
+      font-size: 1em;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      margin-top: 0.5em;
+      box-sizing: border-box;
+    }
+    form button {
+      padding: 0.7em 1.2em;
+      font-size: 1em;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+      margin-top: 1em;
+    }
+    form button:hover {
+      background-color: #45a049;
+    }
+  </style>
+</head>
+<body>
+  <!-- Speech Recognition Demo -->
+  <section id="speech-recognition">
+    <h1>Speech Color Changer</h1>
+    <p>Tap/click then say a color to change the background color of the page.</p>
+    <div class="hints"></div>
+    <p class="output"><em>…diagnostic messages</em></p>
+  </section>
+
+  <hr>
+
+  <!-- Speech Synthesis Demo -->
+  <section id="speech-synthesis">
+    <h1>Speech Synthesizer</h1>
+    <p>Enter some text below and press the Play button (or hit Enter) to hear it. Change voices using the dropdown menu.</p>
+    <form id="tts-form">
+      <label for="tts-input">Text to Speak</label>
+      <input type="text" id="tts-input" class="txt" placeholder="Type something here..." required />
+      
+      <label for="rate">Rate</label>
+      <input type="range" id="rate" min="0.5" max="2" value="1" step="0.1">
+      <span id="rate-value">1</span>
+      
+      <label for="pitch">Pitch</label>
+      <input type="range" id="pitch" min="0" max="2" value="1" step="0.1">
+      <span id="pitch-value">1</span>
+      
+      <label for="voiceSelect">Select Voice</label>
+      <select id="voiceSelect"></select>
+      
+      <!-- Play Button Added -->
+      <button type="submit" id="play-btn">Play</button>
+    </form>
+  </section>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      // -----------------------------
+      // Speech Recognition Demo Code
+      // -----------------------------
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const SpeechGrammarList = window.SpeechGrammarList || window.webkitSpeechGrammarList;
+      const SpeechRecognitionEvent = window.SpeechRecognitionEvent || window.webkitSpeechRecognitionEvent;
+      
+      const recognitionOutput = document.querySelector('#speech-recognition .output');
+      const hints = document.querySelector('#speech-recognition .hints');
+      const bodyBg = document.querySelector('body');
+      
+      if (!SpeechRecognition) {
+        recognitionOutput.textContent = "Sorry, your browser does not support Speech Recognition.";
+        console.error("SpeechRecognition not supported in this browser.");
+      } else {
+        // Define the list of colors and create a grammar string
+        const colors = [
+          "aqua", "azure", "beige", "bisque", "black", "blue", "brown",
+          "chocolate", "coral", "crimson", "cyan", "fuchsia", "ghostwhite",
+          "gold", "goldenrod", "gray", "green", "indigo", "ivory", "khaki",
+          "lavender", "lime", "linen", "magenta", "maroon", "moccasin",
+          "navy", "olive", "orange", "orchid", "peru", "pink", "plum",
+          "purple", "red", "salmon", "sienna", "silver", "snow", "tan",
+          "teal", "thistle", "tomato", "turquoise", "violet", "wheat",
+          "white", "yellow"
+        ];
+      
+        const grammar = '#JSGF V1.0; grammar colors; public <color> = ' + colors.join(' | ') + ' ;';
+      
+        // Create the SpeechRecognition instance and set up its properties
+        const recognition = new SpeechRecognition();
+        const speechRecognitionList = new SpeechGrammarList();
+        speechRecognitionList.addFromString(grammar, 1);
+        recognition.grammars = speechRecognitionList;
+        recognition.continuous = false;
+        recognition.lang = 'en-US';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+      
+        // Display color hints
+        let colorHTML = "";
+        colors.forEach(color => {
+          colorHTML += `<span style="background-color:${color};">${color}</span>`;
+        });
+        hints.innerHTML = "Tap or click then say a color. Try: " + colorHTML;
+      
+        // Start recognition when the Speech Recognition section is clicked
+        document.querySelector('#speech-recognition').addEventListener('click', () => {
+          recognition.start();
+          recognitionOutput.textContent = "Listening...";
+          console.log("Speech recognition started.");
+        });
+      
+        // Process the recognition result
+        recognition.onresult = event => {
+          const color = event.results[0][0].transcript.trim().toLowerCase();
+          recognitionOutput.textContent = "Result received: " + color + ".";
+          console.log("Recognized color:", color);
+          bodyBg.style.backgroundColor = color;
+          console.log("Confidence: " + event.results[0][0].confidence);
+        };
+      
+        recognition.onspeechend = () => {
+          recognition.stop();
+          console.log("Speech ended, recognition stopped.");
+        };
+      
+        recognition.onnomatch = event => {
+          recognitionOutput.textContent = "I didn't recognize that color.";
+          console.warn("No matching color found.");
+        };
+      
+        recognition.onerror = event => {
+          recognitionOutput.textContent = "Error occurred in recognition: " + event.error;
+          console.error("Recognition error:", event.error);
+        };
+      }
+      
+      // -----------------------------
+      // Speech Synthesis Demo Code
+      // -----------------------------
+      const synth = window.speechSynthesis;
+      
+      const ttsForm = document.getElementById('tts-form');
+      const ttsInput = document.getElementById('tts-input');
+      const rateInput = document.getElementById('rate');
+      const pitchInput = document.getElementById('pitch');
+      const rateValueSpan = document.getElementById('rate-value');
+      const pitchValueSpan = document.getElementById('pitch-value');
+      const voiceSelectElem = document.getElementById('voiceSelect');
+      
+      let voices = [];
+      
+      function populateVoiceList() {
+        voices = synth.getVoices();
+        voiceSelectElem.innerHTML = '';
+        voices.forEach(voice => {
+          const option = document.createElement('option');
+          option.textContent = `${voice.name} (${voice.lang})`;
+          if (voice.default) {
+            option.textContent += ' — DEFAULT';
+          }
+          option.setAttribute('data-lang', voice.lang);
+          option.setAttribute('data-name', voice.name);
+          voiceSelectElem.appendChild(option);
+        });
+      }
+      
+      populateVoiceList();
+      if (synth.onvoiceschanged !== undefined) {
+        synth.onvoiceschanged = populateVoiceList;
+      }
+      
+      ttsForm.onsubmit = (event) => {
+        event.preventDefault();
+        const utterThis = new SpeechSynthesisUtterance(ttsInput.value);
+        const selectedOption = voiceSelectElem.selectedOptions[0].getAttribute('data-name');
+        for (let i = 0; i < voices.length; i++) {
+          if (voices[i].name === selectedOption) {
+            utterThis.voice = voices[i];
+            break;
+          }
+        }
+        utterThis.pitch = parseFloat(pitchInput.value);
+        utterThis.rate = parseFloat(rateInput.value);
+        synth.speak(utterThis);
+        ttsInput.blur();
+      };
+      
+      pitchInput.onchange = () => {
+        pitchValueSpan.textContent = pitchInput.value;
+      };
+      
+      rateInput.onchange = () => {
+        rateValueSpan.textContent = rateInput.value;
+      };
+    });
+  </script>
+</body>
+</html>
