@@ -125,25 +125,26 @@
       const hints = document.querySelector('#speech-recognition .hints');
       const bodyBg = document.querySelector('body');
       
+      // Define the allowed colors list
+      const colors = [
+        "aqua", "azure", "beige", "bisque", "black", "blue", "brown",
+        "chocolate", "coral", "crimson", "cyan", "fuchsia", "ghostwhite",
+        "gold", "goldenrod", "gray", "green", "indigo", "ivory", "khaki",
+        "lavender", "lime", "linen", "magenta", "maroon", "moccasin",
+        "navy", "olive", "orange", "orchid", "peru", "pink", "plum",
+        "purple", "red", "salmon", "sienna", "silver", "snow", "tan",
+        "teal", "thistle", "tomato", "turquoise", "violet", "wheat",
+        "white", "yellow"
+      ];
+      
       if (!SpeechRecognition) {
         recognitionOutput.textContent = "Sorry, your browser does not support Speech Recognition.";
         console.error("SpeechRecognition not supported in this browser.");
       } else {
-        // Define the list of colors and create a grammar string
-        const colors = [
-          "aqua", "azure", "beige", "bisque", "black", "blue", "brown",
-          "chocolate", "coral", "crimson", "cyan", "fuchsia", "ghostwhite",
-          "gold", "goldenrod", "gray", "green", "indigo", "ivory", "khaki",
-          "lavender", "lime", "linen", "magenta", "maroon", "moccasin",
-          "navy", "olive", "orange", "orchid", "peru", "pink", "plum",
-          "purple", "red", "salmon", "sienna", "silver", "snow", "tan",
-          "teal", "thistle", "tomato", "turquoise", "violet", "wheat",
-          "white", "yellow"
-        ];
-      
+        // Create a grammar string from allowed colors
         const grammar = '#JSGF V1.0; grammar colors; public <color> = ' + colors.join(' | ') + ' ;';
       
-        // Create the SpeechRecognition instance and set up its properties
+        // Create the SpeechRecognition instance and set properties
         const recognition = new SpeechRecognition();
         const speechRecognitionList = new SpeechGrammarList();
         speechRecognitionList.addFromString(grammar, 1);
@@ -167,13 +168,20 @@
           console.log("Speech recognition started.");
         });
       
-        // Process the recognition result
+        // Process the recognition result and change background if valid
         recognition.onresult = event => {
-          const color = event.results[0][0].transcript.trim().toLowerCase();
-          recognitionOutput.textContent = "Result received: " + color + ".";
-          console.log("Recognized color:", color);
-          bodyBg.style.backgroundColor = color;
-          console.log("Confidence: " + event.results[0][0].confidence);
+          let recognizedColor = event.results[0][0].transcript.trim().toLowerCase();
+          // Remove any punctuation that might cause mismatches
+          recognizedColor = recognizedColor.replace(/[^\w\s]|_/g, "").trim();
+          console.log("Recognized color after cleaning:", recognizedColor);
+          if (colors.includes(recognizedColor)) {
+            recognitionOutput.textContent = "Result received: " + recognizedColor + ".";
+            bodyBg.style.backgroundColor = recognizedColor;
+            console.log("Background color set to:", recognizedColor);
+          } else {
+            recognitionOutput.textContent = "Unrecognized or invalid color: " + recognizedColor + ".";
+            console.warn("The recognized color is not in the allowed list.");
+          }
         };
       
         recognition.onspeechend = () => {
